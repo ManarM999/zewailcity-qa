@@ -15,7 +15,7 @@ except Exception as e:
     print(f"Initialization failed: {str(e)}")
     exit(1)
 
-@app.route('/ask', methods=['POST'])
+@app.route('/ask', methods=['POST',"GET"])
 def ask():
     try:
         data = request.get_json()
