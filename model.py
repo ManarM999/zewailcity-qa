@@ -10,7 +10,8 @@ def preprocess_text(text):
 def get_embeddings(texts):
     global _model
     if _model is None:
-        _model = SentenceTransformer('all-MiniLM-L6-v2')  # Efficient & accurate
+        _model = SentenceTransformer('paraphrase-MiniLM-L3-v2')  # Smaller and faster
+
     
     processed_texts = [preprocess_text(t) for t in texts]
     embeddings = _model.encode(processed_texts, convert_to_tensor=True)
