@@ -1,48 +1,35 @@
-# app.py
 from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
 import numpy as np
 from model import preprocess_text, get_similarity
-import os
 from sentence_transformers import SentenceTransformer
+import os
 
 app = Flask(__name__, static_folder='static')
 
-# Load data
 faq_data = pd.read_csv("zewailcity_faq.csv")
 faq_embeddings = np.load("faq_embeddings.npy")
-
-# Load model once at startup
-model = SentenceTransformer("all-MiniLM-L6-v2")
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
 @app.route("/ask", methods=["POST"])
 def ask():
-    try:
-        data = request.get_json()
-        user_question = data.get("question", "").strip()
-        if not user_question:
-            return jsonify({"answer": "Please enter a valid question."}), 400
+    data = request.get_json()
+    question = data.get("question", "").strip()
+    if not question:
+        return jsonify({"answer": "Please enter a question."}), 400
 
-        processed = preprocess_text(user_question)
-        user_embedding = model.encode([processed])[0]  # Shape (384,)
+    user_embedding = model.encode([preprocess_text(question)])[0]
+    sims = get_similarity(user_embedding, faq_embeddings)
+    best_idx = np.argmax(sims)
+    max_sim = sims[best_idx]
 
-        similarities = get_similarity(user_embedding, faq_embeddings)
-        best_idx = np.argmax(similarities)
-        max_sim = similarities[best_idx]
-
-        if max_sim < 0.5:
-            return jsonify({
-                "answer": "I'm not sure about that. Please contact admissions.",
-                "confidence": float(max_sim)
-            })
-
-        return jsonify({
-            "answer": faq_data['answer'].iloc[best_idx],
-            "confidence": float(max_sim)
-        })
-
-    except Exception as e:
-        return jsonify({"answer": "An error occurred: " + str(e)}), 500
+    if max_sim < 0.5:
+        return jsonify({"answer": "I'm not sure. Please contact admissions.", "confidence": float(max_sim)})
+    
+    return jsonify({
+        "answer": faq_data['answer'].iloc[best_idx],
+        "confidence": float(max_sim)
+    })
 
 @app.route("/")
 def serve_index():

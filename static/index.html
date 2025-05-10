@@ -1,39 +1,26 @@
-<!-- index.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zewail City QA System</title>
-    <style>
-        body { font-family: Arial, sans-serif; }
-        #qa-container { max-width: 600px; margin: auto; padding: 20px; }
-        input[type="text"] { width: 100%; padding: 10px; }
-        button { padding: 10px; }
-        #answer { margin-top: 20px; }
-    </style>
+  <title>Zewail City QA</title>
 </head>
 <body>
-    <div id="qa-container">
-        <h1>Zewail City Admission QA</h1>
-        <input type="text" id="question" placeholder="Ask your question here...">
-        <button onclick="askQuestion()">Submit</button>
-        <div id="answer"></div>
-    </div>
+  <h2>Ask a Question:</h2>
+  <input id="question" type="text" />
+  <button onclick="ask()">Ask</button>
+  <p id="response"></p>
 
-    <script>
-        async function askQuestion() {
-            const question = document.getElementById('question').value;
-            const response = await fetch('http://127.0.0.1:5000/ask', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ question })
-            });
-            const data = await response.json();
-            document.getElementById('answer').innerText = data.answer;
-        }
-    </script>
+  <script>
+    function ask() {
+      fetch("/ask", {
+        method: "POST",
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({question: document.getElementById("question").value})
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById("response").innerText = "Answer: " + data.answer;
+      });
+    }
+  </script>
 </body>
 </html>
