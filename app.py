@@ -1,43 +1,70 @@
 from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
-import numpy as np
-from model import preprocess_text, get_similarity
-from sentence_transformers import SentenceTransformer
+import torch
 import os
+from model import get_embeddings
 
 app = Flask(__name__, static_folder='static')
 
-faq_data = pd.read_csv("zewailcity_faq.csv")
-faq_embeddings = np.load("faq_embeddings.npy")
-model = SentenceTransformer('all-MiniLM-L6-v2')
+# Configuration
+MIN_SIMILARITY = 0.5  
 
-@app.route("/ask", methods=["POST"])
+# Load FAQ data
+try:
+    faq_data = pd.read_csv('zewailcity_faq.csv')
+    faq_embeddings = get_embeddings(faq_data['question'].tolist())
+except Exception as e:
+    print(f"Initialization failed: {str(e)}")
+    exit(1)
+
+@app.route('/ask', methods=['POST'])
 def ask():
-    data = request.get_json()
-    question = data.get("question", "").strip()
-    if not question:
-        return jsonify({"answer": "Please enter a question."}), 400
+    try:
+        data = request.get_json()
+        user_question = data.get('question', '').strip()
+        
+        if not user_question:
+            return jsonify({'answer': 'Please enter a valid question.'}), 400
+        
+        user_embedding = get_embeddings([user_question])
+        similarities = torch.nn.functional.cosine_similarity(
+            user_embedding, 
+            faq_embeddings, 
+            dim=1
+        )
 
-    user_embedding = model.encode([preprocess_text(question)])[0]
-    sims = get_similarity(user_embedding, faq_embeddings)
-    best_idx = np.argmax(sims)
-    max_sim = sims[best_idx]
+        print("\nCosine Similarities:")
+        for idx, (sim, question) in enumerate(zip(similarities.tolist(), faq_data['question'].tolist())):
+            print(f"{idx + 1:>2}. Similarity: {sim:.4f} | Question: {question}")
+        
+        best_match_idx = similarities.argmax().item()
+        max_similarity = similarities[best_match_idx].item()
+        answer = faq_data['answer'].iloc[best_match_idx]
+        
+        if max_similarity < MIN_SIMILARITY:
+            return jsonify({
+                'answer': "I'm not sure about that. Please contact admissions for more details.",
+                'confidence': float(max_similarity)
+            })
+            
+        return jsonify({
+            'answer': answer,
+            'confidence': float(max_similarity)
+        })
+        
+    except Exception as e:
+        return jsonify({'answer': 'An error occurred processing your request.'}), 500
 
-    if max_sim < 0.5:
-        return jsonify({"answer": "I'm not sure. Please contact admissions.", "confidence": float(max_sim)})
-    
-    return jsonify({
-        "answer": faq_data['answer'].iloc[best_idx],
-        "confidence": float(max_sim)
-    })
-
-@app.route("/")
+# Static file serving
+@app.route('/')
 def serve_index():
-    return send_from_directory("static", "index.html")
+    return send_from_directory('static', 'index.html')
 
-@app.route("/<path:path>")
+@app.route('/<path:path>')
 def serve_static(path):
-    return send_from_directory("static", path)
+    return send_from_directory('static', path)
 
-if __name__ == "__main__":
-    app.run(debug=True)
+if __name__ == '__main__':
+    if not os.path.exists('static'):
+        os.makedirs('static')
+    app.run(host='0.0.0.0', port=5000, debug=True)

@@ -1,10 +1,17 @@
+from sentence_transformers import SentenceTransformer
 import re
-import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
+
+_model = None
 
 def preprocess_text(text):
-    return re.sub(r'[^\w\s]', '', text.lower().strip())
+    text = text.lower().strip()
+    return re.sub(r'[^\w\s]', '', text)  # Remove punctuation
 
-def get_similarity(user_embedding, all_embeddings):
-    sims = cosine_similarity(user_embedding.reshape(1, -1), all_embeddings)
-    return sims.flatten()
+def get_embeddings(texts):
+    global _model
+    if _model is None:
+        _model = SentenceTransformer('all-MiniLM-L6-v2')  # Efficient & accurate
+    
+    processed_texts = [preprocess_text(t) for t in texts]
+    embeddings = _model.encode(processed_texts, convert_to_tensor=True)
+    return embeddings
