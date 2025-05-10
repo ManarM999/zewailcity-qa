@@ -6,10 +6,8 @@ from model import get_embeddings
 
 app = Flask(__name__, static_folder='static')
 
-# Configuration
 MIN_SIMILARITY = 0.5  
 
-# Load FAQ data
 try:
     faq_data = pd.read_csv('zewailcity_faq.csv')
     faq_embeddings = get_embeddings(faq_data['question'].tolist())
@@ -55,7 +53,6 @@ def ask():
     except Exception as e:
         return jsonify({'answer': 'An error occurred processing your request.'}), 500
 
-# Static file serving
 @app.route('/')
 def serve_index():
     return send_from_directory('static', 'index.html')

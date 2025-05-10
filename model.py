@@ -5,12 +5,12 @@ _model = None
 
 def preprocess_text(text):
     text = text.lower().strip()
-    return re.sub(r'[^\w\s]', '', text)  # Remove punctuation
+    return re.sub(r'[^\w\s]', '', text)
 
 def get_embeddings(texts):
     global _model
     if _model is None:
-        _model = SentenceTransformer('paraphrase-MiniLM-L3-v2')  # Smaller and faster
+        _model = SentenceTransformer('paraphrase-MiniLM-L3-v2')  
 
     
     processed_texts = [preprocess_text(t) for t in texts]
